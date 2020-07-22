@@ -44,7 +44,7 @@
 
 // Create a new emulator, messy ifdefs ensure that only one links at a time
 Emu* NewEmulator()
-{  
+{
   #if (EMULATOR==EMU_NES)
   return NewNofrendo(VIDEO_STANDARD);
   #endif
@@ -111,8 +111,8 @@ esp_err_t mount_filesystem()
 }
 
 void setup()
-{ 
-  rtc_clk_cpu_freq_set(RTC_CPU_FREQ_240M);  
+{
+  rtc_clk_cpu_freq_set(RTC_CPU_FREQ_240M);
   mount_filesystem();                       // mount the filesystem!
   _emu = NewEmulator();                     // create the emulator!
   hid_init("emu32");                        // bluetooth hid on core 1!
@@ -132,10 +132,10 @@ void perf()
   if (_drawn >= _next) {
     float elapsed_us = 120*1000000/(_emu->standard ? 60 : 50);
     _next = _drawn + 120;
-    
+
     printf("frame_time:%d drawn:%d displayed:%d blit_ticks:%d->%d, isr time:%2.2f%%\n",
       _frame_time/240,_drawn,_frame_counter,_blit_ticks_min,_blit_ticks_max,(_isr_us*100)/elapsed_us);
-      
+
     _blit_ticks_min = 0xFFFFFFFF;
     _blit_ticks_max = 0;
     _isr_us = 0;
@@ -147,7 +147,7 @@ void perf(){};
 
 // this loop always runs on app_core (1).
 void loop()
-{    
+{
   #ifdef SINGLE_CORE
   emu_loop();
   #else
@@ -162,7 +162,7 @@ void loop()
     }
   }
   #endif
-  
+
   // update the bluetooth edr/hid stack
   hid_update();
 

@@ -16,6 +16,7 @@
 */
 
 #include "emu.h"
+#include <math.h>
 
 using namespace std;
 
@@ -351,23 +352,12 @@ public:
         _width = width;
         _height = height;
         _flavor = flavor;
-        switch (_flavor) {
-            case EMU_NES:
-                OVERLAY_WIDTH = 28;
-                OVERLAY_HEIGHT = 20;
-                set_colors(0x39,0x09);  // nes
-                break;
-            case EMU_ATARI:
-                OVERLAY_WIDTH = 34;
-                OVERLAY_HEIGHT = 22;
-                set_colors(0xCE,0xC2);  // atari
-                break;
-            case EMU_SMS:
-                OVERLAY_WIDTH = 28;
-                OVERLAY_HEIGHT = 20;
-                set_colors(7<<2,1<<3);  // sms - 332 rgb
-                break;
-        }
+
+        OVERLAY_WIDTH = 46;
+        OVERLAY_HEIGHT = 29;
+        // set_colors(0x39,0x09);  // nes
+        set_colors(0xCE,0xC2);  // atari
+        // set_colors(7<<2,1<<3);  // sms - 332 rgb
 
         _buf = new uint8_t[OVERLAY_WIDTH*OVERLAY_HEIGHT];
         memset(_buf,0,OVERLAY_WIDTH*OVERLAY_HEIGHT);
@@ -494,16 +484,211 @@ public:
         vline(-32,left-1,top-1,bottom+1);
     }
 
+    void random_characters() {
+      uint8_t* s = _buf;
+
+      for (int y = 0; y < OVERLAY_HEIGHT; y++) {
+          for (int x = 0; x < OVERLAY_WIDTH; x++) {
+              _buf[y*OVERLAY_WIDTH + x] = rand();
+              draw_char(*s++,x,y);
+          }
+      }
+    }
+
+    void print10() {
+      uint8_t* s = _buf;
+      srand(0);
+      for (int y = 0; y < OVERLAY_HEIGHT; y++) {
+          for (int x = 0; x < OVERLAY_WIDTH; x++) {
+              if (rand() % 10 > 5) {
+                _buf[y*OVERLAY_WIDTH + x] = 7;
+              } else {
+                _buf[y*OVERLAY_WIDTH + x] = 6;
+              }
+              draw_char(*s++,x,y);
+          }
+      }
+    }
+
+    void colina_verde() {
+      uint8_t* s = _buf;
+      srand(0);
+      for (int y = 0; y < OVERLAY_HEIGHT; y++) {
+          for (int x = 0; x < OVERLAY_WIDTH; x++) {
+              if (rand() % 10 > 5) {
+                _buf[y*OVERLAY_WIDTH + x] = 7;
+              } else {
+                _buf[y*OVERLAY_WIDTH + x] = 6;
+              }
+              set_colors(x, y);
+              draw_char(*s++,x,y);
+          }
+      }
+      for (int y = 0; y < 240; y++) {
+        for (int x = 0; x < 360; x++) {
+          uint8_t* dst = _lines[y] + x;
+          luma(dst, x+y);
+        }
+      }
+    }
+
+    void rainbow_scroll() {
+      for (int y = 0; y < 240; y++) {
+        for (int x = 0; x < 360; x++) {
+          uint8_t* dst = _lines[y] + x;
+          setp(dst, ((x+y)/2)*2 + t);
+        }
+      }
+    }
+
+    void bolota_abrindo() {
+      int res = 10;
+      for (int y = 0; y < 240/res; y++) {
+        for (int x = 0; x < 360/res; x++) {
+          float d = hypot((180/res)-x, (120/res)-y);
+          for (int _y = 0; _y < res; _y++) {
+            for (int _x = 0; _x < res; _x++) {
+              uint8_t* dst = _lines[(y*res)+_y] + (x*res)+_x;
+              setp(dst, d - t);
+            }
+          }
+        }
+      }
+    }
+
+    void stripes_with_different_patterns() {
+      int res = 5;
+      for (int y = 0; y < 240/res; y++) {
+        for (int x = 0; x < 360/res; x++) {
+          float phase = (y*res + x*res) / (240/res + 360/res);
+          float d = hypot((180/res)-x*sin(phase), (120/res)-y*cos(phase));
+          for (int _y = 0; _y < res; _y++) {
+            for (int _x = 0; _x < res; _x++) {
+              uint8_t* dst = _lines[(y*res)+_y] + (x*res)+_x;
+              setp(dst, d - t);
+            }
+          }
+        }
+      }
+    }
+
+    void in_and_out() {
+      int res = 10;
+      for (int y = 0; y < 240/res; y++) {
+        for (int x = 0; x < 360/res; x++) {
+          float phase = (y*res + x*res) / (240/res + 360/res);
+          float d = hypot(
+            (180/res) - x,
+            (120/res) - y
+            // ((180/res) + (180/res)*sin(t/6.0)) - x,
+            // ((120/res) + (120/res)*cos(t/8.0)) - y
+          ) * sin(t/50.0);
+          for (int _y = 0; _y < res; _y++) {
+            for (int _x = 0; _x < res; _x++) {
+              uint8_t* dst = _lines[(y*res)+_y] + (x*res)+_x;
+              setp(dst, d + t);
+            }
+          }
+        }
+      }
+    }
+
+    void striped_fake_plasma() {
+      int res = 10;
+      float phase = 0;
+      for (int y = 0; y < 240/res; y++) {
+        for (int x = 0; x < 360/res; x++) {
+          float phase = (y*360 + x*res) / (240/res + 360/res);
+          float d = hypot(
+            ((90/res)*sin(t/8.0)) + (180/res) - x,
+            ((60/res)*cos(t/17.0)) + (120/res) - y
+          ) * sin(t/50.0) * cos(phase/2.0);
+          for (int _y = 0; _y < res; _y++) {
+            for (int _x = 0; _x < res; _x++) {
+              uint8_t* dst = _lines[(y*res)+_y] + (x*res)+_x;
+              setp(dst, d + t);
+            }
+          }
+        }
+      }
+    }
+
+    void fake_plasma() {
+      int res = 10;
+      float phase = 0;
+      for (int y = 0; y < 240/res; y++) {
+        for (int x = 0; x < 360/res; x++) {
+          float phase = (y*360 + x*res) / (240/res + 360/res);
+          float d = hypot(
+            ((190/res)*cos(t/16.0)) + ((90/res)*sin(t/8.0)) + (180/res) - x,
+            ((160/res)*sin(t/5.0)) + ((60/res)*cos(t/17.0)) + (120/res) - y
+          ) * sin(phase/50.0);
+          for (int _y = 0; _y < res; _y++) {
+            for (int _x = 0; _x < res; _x++) {
+              uint8_t* dst = _lines[(y*res)+_y] + (x*res)+_x;
+              setp(dst, d + t);
+            }
+          }
+        }
+      }
+    }
+
+    void shape() {
+      int res = 10;
+      float phase = 0;
+      for (int y = 0; y < 240/res; y++) {
+        for (int x = 0; x < 360/res; x++) {
+          float phase = (y*360 + x*res) / (240/res + 360/res);
+          float d = hypot(
+            (180/res) - x,
+            (120/res) - y
+          );
+          for (int _y = 0; _y < res; _y++) {
+            for (int _x = 0; _x < res; _x++) {
+              uint8_t* dst = _lines[(y*res)+_y] + (x*res)+_x;
+              setp(dst, d + t);
+            }
+          }
+        }
+      }
+    }
+
+    int t = 0;
     void update()
     {
-        uint8_t* s = _buf;
-        int xx = (_width-OVERLAY_WIDTH*8) >> 4;
-        int yy = (_height-OVERLAY_HEIGHT*8) >> 4;
-        for (int y = 0; y < OVERLAY_HEIGHT; y++) {
-            for (int x = 0; x < OVERLAY_WIDTH; x++) {
-                draw_char(*s++,x+xx,y+yy);
-            }
-        }
+      t++;
+      switch ((t/500) % 10) {
+        case 0:
+          random_characters();
+          break;
+        case 1:
+          print10();
+          break;
+        case 2:
+          colina_verde();
+          break;
+        case 3:
+          rainbow_scroll();
+          break;
+        case 4:
+          bolota_abrindo();
+          break;
+        case 5:
+          stripes_with_different_patterns();
+          break;
+        case 6:
+          in_and_out();
+          break;
+        case 7:
+          striped_fake_plasma();
+          break;
+        case 8:
+          fake_plasma();
+          break;
+        case 9:
+          shape();
+          break;
+      }
     }
 
     void plot_char(int c, int x, int y)
@@ -633,7 +818,7 @@ public:
         }
         _hilited = max(0,min(_hilited,c-1));
     }
-    
+
     int count()
     {
         switch (_tab) {
@@ -823,87 +1008,11 @@ public:
         return (i + count()/2)/count();
     }
 
-    void scrollbar()
-    {
-        int h = _overlay->OVERLAY_HEIGHT;
-        int w = _overlay->OVERLAY_WIDTH;
-
-        _overlay->plot_str("\x1C",w-1,2);
-        _overlay->plot_str("\x1D",w-1,h-1);
-        _scroll = min(_hilited,_scroll);
-        _scroll = max(_hilited-(h-3),_scroll);
-
-        for (int i = 0; i < (h-4); i++)
-            _overlay->plot_str(" ",w-1,i+3);
-        int b = h-4;
-        int top = 0;
-        if (count() > (h-2)) {
-            b = max(1,range(h-2));
-            top = range(_scroll);
-        }
-        for (int i = 0; i < b; i++)
-            _overlay->plot_str("|",w-1,top+i+3);
-    }
-
-    void draw_icon(int index, int icon)
-    {
-        int y = item_y(index);
-        if (y < 0)
-            return;
-        _overlay->plot_char(icon+128,0,y);
-    }
-
-    void draw_disk(int index)
-    {
-        for (int i = 0; i < 2; i++) {
-            if (index == _disks[i])
-                draw_icon(index,'1' + i);
-        }
-    }
-
-    void draw_files()
-    {
-        int i;
-        for (i = 0; i < (int)_files.size(); i++) {
-            string c = _files[i];
-            int w = _overlay->OVERLAY_WIDTH-2;
-            if (c.length() > w)
-                c.resize(w);
-            draw_item(i,c.c_str(),i == _hilited);
-            draw_disk(i);
-        }
-        clear(i);
-    }
-
-    void draw_help()
-    {
-        const char** s = _emu->_help;
-        if (!s)
-            return;
-        int i;
-        for (i = 0; s[i]; i++)
-            draw_item(i,s[i],false);
-        clear(i);
-    }
 
     void clear(int i)
     {
         while (i < _overlay->OVERLAY_HEIGHT - 2)
             draw_item(i++," ",false);
-    }
-
-    void draw_info()
-    {
-        if (_dirty) {
-            _dirty = false;
-            _info.clear();
-            int index = _tab_hilited[0];
-            _emu->info(_path + "/" + _files[index],_info);
-        }
-        int i;
-        for (i = 0; i < (int)_info.size(); i++)
-            draw_item(i,_info[i].c_str(),false);
-        clear(i);
     }
 
     string get_pref(const string& key)
@@ -921,73 +1030,12 @@ public:
     void insert_default(const char* path)
     {
         read_directory(path);
-        if (_files.empty()) {
-            _emu->make_default_media(_path);
-            read_directory(path);
-        }
-
-        int recent = find_file(get_pref("recent"));
-
-        for (int i = 0; i < 2; i++)
-            _disks[i] = find_disk(i);
-
-        // just insert the first one
-        if (_files.empty()) {
-            _visible = true;
-        } else {
-            _hilited = recent == -1 ? 0 : recent;
-            enter(0);
-        }
+        enter(0);
     }
 
     void update_video()
     {
-        if (_visible) {
-            menu();
-            scrollbar();
-            switch (_tab) {
-                case 0: draw_files(); break;
-                case 1: draw_info(); break;
-                case 2: draw_help(); break;
-            }
-            _overlay->update();
-        } else {
-            _emu->update();
-        }
-
-        // message goes over both
-        if (_msg.size()) {
-            if (--_msg_ticks == 0) {
-                _overlay->erase_msg();
-                _msg.clear();
-            } else
-                _overlay->draw_msg(_msg);
-        }
-    }
-
-    // soft click wave soundy thing
-    const uint16_t _wav[16] =  {
-        0x0000,0x187D,0x2D41,0x3B20,0x3FFF,0x3B20,0x2D41,0x187D,
-        0x0000,0xE783,0xD2BF,0xC4E0,0xC001,0xC4E0,0xD2BF,0xE783
-    };
-
-    void update_audio()
-    {
-        int16_t abuffer[313*2];
-        int format = _emu->audio_format >> 8;
-        int sample_count = _emu->frame_sample_count();
-        if (_visible) {
-            format = 1;
-            if (_click) {
-                _click = 0;
-                for (int i = 0; i < sample_count; i++)
-                    abuffer[i] = _wav[i&0xF];  // just a signed sine click
-            } else
-              memset(abuffer,0,sizeof(abuffer));
-        } else {
-            sample_count = _emu->audio_buffer(abuffer,sizeof(abuffer));
-        }
-        audio_write_16(abuffer,sample_count,format);
+        _overlay->update();
     }
 };
 
@@ -1003,17 +1051,7 @@ void gui_start(Emu* emu, const char* path)
 
 void gui_update()
 {
-    _gui.update_audio();
     _gui.update_video();
-
-    uint8_t buf[64];
-    int n = hid_get(buf,sizeof(buf));    // called from emulation loop
-    if (n > 0)
-        gui_hid(buf,n);
-    
-    n = get_hid_ir(buf);
-    if (n > 0)
-        gui_hid(buf,n);
 }
 
 void gui_key(int keycode, int pressed, int mods)
